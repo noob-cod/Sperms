@@ -1,0 +1,22 @@
+# 忽略特殊文件
+.idea/
+*.iml
+
+# 忽略图片文件
+*.jpg
+*.jpeg
+*.png
+*.tiff
+
+# 忽略office文件
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+
+# 忽略模型文件
+*.h5
+*.mdf5
+
+# 忽略文件夹
+/src_dataset
