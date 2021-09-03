@@ -12,15 +12,12 @@
   
 - Code  
     - utils  
-    	-losses  
-    	    - __init__.py  
-    	    FocalLoss.py: FocalLoss的实现  
-    	- __init__.py  
+    	- losses  
+    	- FocalLoss.py: FocalLoss的实现  
     - UNet
-    	- __init__.py
     	- UNet.py: UNet源代码
     - UNetpp
-    	- __init__.py
+
     	- UNet++.py: UNet++源代码  
     - config.py: 模型配置文件  
     - main.py: 模型组装、配置、训练
