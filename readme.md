@@ -10,11 +10,25 @@
 - Checkpoint
     - UNet: UNet模型训练过程中的checkpoint文件
   
-- Code
-    - UNet: UNet源代码
-    - UNet++: UNet++源代码
+- Code  
+    - utils  
+    	-losses  
+    	    - __init__.py  
+    	    FocalLoss.py: FocalLoss的实现  
+    	- __init__.py  
+    - UNet
+    	- __init__.py
+    	- UNet.py: UNet源代码
+    - UNetpp
+    	- __init__.py
+    	- UNet++.py: UNet++源代码  
+    - config.py: 模型配置文件  
+    - main.py: 模型组装、配置、训练
   
 - Outputs
     - UNet: 训练好的UNet模型的输出
   
-- src_dataset
+- src_dataset  
+
+- dataset  
+    - UNet: UNet&UNet++数据集

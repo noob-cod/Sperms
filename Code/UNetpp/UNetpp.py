@@ -1,7 +1,7 @@
 """
 @Date: 2021/9/1 下午4:50
 @Author: Chen Zhang
-@Brief: UNet++
+@Brief: UNetpp
 """
 from typing import Tuple
 
