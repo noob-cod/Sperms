@@ -13,7 +13,10 @@
 - Code  
     - utils  
     	- losses  
-    	- FocalLoss.py: FocalLoss的实现  
+    	    - FocalLoss.py: FocalLoss的实现  
+    	    - DiceLoss.py: DiceLoss的实现  
+    	- datamaker  
+    	    - unet_datamaker
     - UNet
     	- UNet.py: UNet源代码
     - UNetpp
@@ -28,4 +31,17 @@
 - src_dataset  
 
 - dataset  
-    - UNet: UNet&UNet++数据集
+    - UNet_dataset  
+    	- training_set  
+    	    - img: 随机截取后的训练集图像  
+    	    - mask: 随机截取后的训练集mask  
+    	    - src  
+    	        - img: 训练集原始图像  
+    	        - mask: 训练集原始mask  
+    	        - mask_vis: 训练集原始mask可视化图像  
+    	- test_set  
+    	    - img: 随机截取后的测试集图像  
+    	    - mask: 随机截取后的测试集mask  
+    	    - src:
+    	        - img: 测试集原始图像  
+    	        - mask: 测试集原始mask  

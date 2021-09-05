@@ -173,8 +173,9 @@ class UNetDataMaker:
 
 
 if __name__ == '__main__':
-    src_img = '/home/bmp/ZC/Sperms/Test/img'
-    src_msk = '/home/bmp/ZC/Sperms/Test/mask'
-    save_path = '/home/bmp/ZC/Sperms/Test/result'
+    # 制作训练集图像
+    src_img = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/src/img'
+    src_msk = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/src/mask'
+    save_path = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set'
     result = UNetDataMaker(src_img, src_msk, save_path)
     result.make_dataset(rotate=True, flip=True)
