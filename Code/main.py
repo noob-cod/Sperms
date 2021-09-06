@@ -3,12 +3,16 @@
 @Author: Chen Zhang
 @Brief: 训练
 """
+import os
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau, ModelCheckpoint
 
 from UNet.UNet import UNet
 from UNetpp.UNetpp import UNetPP
+from utils.Dataset_to_TFRecord import tfrecord_read
+from utils.one_hot_encode import mask_to_onehot
 
 from config import cfg
 
@@ -31,8 +35,11 @@ patterns = {
 # =========================================== #
 # 构建数据集
 # =========================================== #
-training_set = None
-validation_set = None
+dataset = tfrecord_read(cfg.DATA.TRAINING_TFRECORD).batch(4)
+print(type(dataset))
+
+training_set = dataset
+validation_set = dataset.skip(6240)
 
 # =========================================== #
 # 构建神经网络
@@ -45,7 +52,7 @@ if cfg.TRAIN.PATTERN == 'segmentation':
         out_dim=cfg.TRAIN.UNET_OUT_DIM,
         activation_type=cfg.TRAIN.UNET_ACTIVATION,
         kernel_initializer_type=cfg.TRAIN.UNET_KERNEL_INITIALIZER,
-        batch_norm=cfg.TRAIN.UNET_BATCH_NORM
+        batch_norm=cfg.TRAIN.UNET_BATCH_NORMALIZATION
     )
     model = my_model.get_model()
 elif cfg.TRAIN.PATTERN == 'detection':

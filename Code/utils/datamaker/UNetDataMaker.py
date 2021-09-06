@@ -42,8 +42,8 @@ class UNetDataMaker:
                  img_file_path,
                  msk_file_path,
                  patch_save_path,
-                 patch_height=252,
-                 patch_width=252,
+                 patch_height=256,
+                 patch_width=256,
                  patch_nums=100
                  ):
         """

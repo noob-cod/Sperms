@@ -17,6 +17,8 @@
     	    - DiceLoss.py: DiceLoss的实现  
     	- datamaker  
     	    - unet_datamaker
+    	- Dataset_to_TFRecord.py: 将图片写入tfrecord文件，但目前写入7800张256*256的图片会生成10G的.tfrecord文件，需要分割。在导入模块处存在bug： "from one_hot_encode import" 在main.py中会报错，需要改为"from utils.one_hot_encode import"，而后者又会在直接运行Dataset_to_TFrecord.py时报错，需要改回第一种写法。
+    	- one\_hot_encode.py: 独热编码工具。
     - UNet
     	- UNet.py: UNet源代码
     - UNetpp

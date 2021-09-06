@@ -1,7 +1,9 @@
 # 忽略特殊文件
 .idea/
 *.iml
+*.tfrecord
 dataset/UNet_dataset/training_set/src/process.py
+
 
 # 忽略图片文件
 *.jpg
@@ -21,4 +23,5 @@ dataset/UNet_dataset/training_set/src/process.py
 
 # 忽略文件夹
 /src_dataset
+__pycache__
 /Test

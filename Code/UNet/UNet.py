@@ -144,7 +144,7 @@ class UNet:
 
 
 if __name__ == '__main__':
-    my_model = UNet((400, 400, 3), 16, 5, 2)
+    my_model = UNet((256, 256, 3), 16, 5, 5)
     unet = my_model.get_model()
-    unet.build((400, 400, 3))
+    unet.build((256, 256, 3))
     unet.summary()
