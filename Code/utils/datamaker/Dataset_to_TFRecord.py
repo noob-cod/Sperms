@@ -20,8 +20,8 @@ import os
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-# from one_hot_encode import mask_to_onehot
-from utils.one_hot_encode import mask_to_onehot
+
+from one_hot_encode import mask_to_onehot
 
 from tensorflow.keras.losses import binary_crossentropy
 
@@ -66,7 +66,7 @@ def img_example(image_string: [str], mask_string: [str]):
         'img_height': _int64_feature(img_shape[0]),
         'img_width': _int64_feature(img_shape[1]),
         'img_depth': _int64_feature(img_shape[2]),
-        'img_raw': _byte_feature(image_string),
+        'img': _byte_feature(image_string),
 
         # 'mask_height': _int64_feature(mask_shape[0]),
         # 'mask_width': _int64_feature(mask_shape[1]),
@@ -149,8 +149,8 @@ def tfrecord_read(record_file: [str]):
 
 if __name__ == '__main__':
     record = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/training_set.tfrecord'
-    img_path = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/img'
-    mask_path = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/mask'
+    img_path = '/dataset/UNet_dataset/training_set/img'
+    mask_path = '/dataset/UNet_dataset/training_set/mask'
     tfrecord_write(record, img_path, mask_path)
     # dataset = tfrecord_read(record)
 

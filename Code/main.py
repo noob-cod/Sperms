@@ -5,14 +5,11 @@
 """
 import os
 
-import numpy as np
-import tensorflow as tf
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau, ModelCheckpoint
 
 from UNet.UNet import UNet
 from UNetpp.UNetpp import UNetPP
-from utils.Dataset_to_TFRecord import tfrecord_read
-from utils.one_hot_encode import mask_to_onehot
+from utils.datamaker.TFRecorder import TFRecorder
 
 from config import cfg
 
@@ -31,16 +28,27 @@ patterns = {
 # 数据预处理
 # =========================================== #
 
+# 已经在utils.datamaker.UNetDataMaker.py中完成
 
 # =========================================== #
 # 构建数据集
 # =========================================== #
-dataset = tfrecord_read(cfg.DATA.TRAINING_TFRECORD).batch(4)
-print(type(dataset))
 
-training_set = dataset
-validation_set = dataset.skip(6240)
+# 记录所有训练用的tfrecord文件路径
+tf_record_files = []
+for name in os.listdir(cfg.DATA.TRAINING_TFRECORD):
+    tf_record_files.append(os.path.join(cfg.DATA.TRAINING_TFRECORD, name))
 
+# 计算参与训练的数据的数量
+train_set_nums = None
+if cfg.DATA.TRAINING_RATIO:
+    train_set_nums = round(len(os.listdir(cfg.DATA.TRAIN_IMG)) * cfg.DATA.TRAINING_RATIO)
+
+# 若不划分验证集，则validation_set为None
+training_set, validation_set = TFRecorder().read_from_tfrecord(tf_record_files, train_set_nums=train_set_nums)
+training_set = training_set.batch(batch_size=cfg.DATA.BATCH_SIZE)
+if validation_set:
+    validation_set = validation_set.batch(batch_size=cfg.DATA.BATCH_SIZE)
 # =========================================== #
 # 构建神经网络
 # =========================================== #

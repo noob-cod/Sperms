@@ -114,10 +114,13 @@ __C.DATA.TEST_IMG = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/test/src/img'
 __C.DATA.TEST_MSK = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/test/src/mask'
 
 # 训练集tfrecord路径
-__C.DATA.TRAINING_TFRECORD = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/training_set.tfrecord'
+__C.DATA.TRAINING_TFRECORD = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/tfrecord'
 
 # 训练集打乱时的缓存区大小
 __C.DATA.SHUFFLE_BUFFER_SIZE = 1000
 
 # 实际训练样本占总训练样本的比例
 __C.DATA.TRAINING_RATIO = 0.8
+
+# 训练集的batch_size
+__C.DATA.BATCH_SIZE = 4
