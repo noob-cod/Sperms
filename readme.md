@@ -16,19 +16,23 @@
     	    - FocalLoss.py: FocalLoss的实现  
     	    - DiceLoss.py: DiceLoss的实现  
     	- datamaker  
-    	    - unet_datamaker
-    	- Dataset_to_TFRecord.py: 将图片写入tfrecord文件，但目前写入7800张256*256的图片会生成10G的.tfrecord文件，需要分割。在导入模块处存在bug： "from one_hot_encode import" 在main.py中会报错，需要改为"from utils.one_hot_encode import"，而后者又会在直接运行Dataset_to_TFrecord.py时报错，需要改回第一种写法。
-    	- one\_hot_encode.py: 独热编码工具。
+    	    - UNetDataMaker.py： 对原始大图像进行随机裁剪，将生成的图像保存至指定文件夹，供后期制作tfrecord  
+    	    - Dataset_to_TFRecord.py： 仅仅使用其中的tfrecord_checkout()函数检验tfrecord中的图片是否符合要求  
+    	    - one_hot_encode.py：将mask按照类别数量编码成对应数量的二值图像  
+    	    - TFRecorder.py：将指定路径下的图像写到.tfrecord文件中，同时向main.py提供解析.tfrecord文件的接口  
+    	- img_show.py：用于显示Outputs中的预测图像  
     - UNet
     	- UNet.py: UNet源代码
     - UNetpp
 
     	- UNet++.py: UNet++源代码  
-    - config.py: 模型配置文件  
+    - config.py: 模型配置文件（需要重新调整内容的结构，在调参时很难找到参数位置）  
     - main.py: 模型组装、配置、训练
   
 - Outputs
     - UNet: 训练好的UNet模型的输出
+    	- 以主要超参数命名的上层文件夹
+    	    - 以具体模型名称命名的下层文件夹：存放具体的预测输出
   
 - src_dataset  
 
@@ -41,6 +45,7 @@
     	        - img: 训练集原始图像  
     	        - mask: 训练集原始mask  
     	        - mask_vis: 训练集原始mask可视化图像  
+    	    - tfrecord: 存放训练用的.tfrecord文件，也是Code/utils/datamaker/TFRecorder.py的输出文件夹
     	- test_set  
     	    - img: 随机截取后的测试集图像  
     	    - mask: 随机截取后的测试集mask  

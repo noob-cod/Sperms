@@ -10,6 +10,7 @@ from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPla
 from UNet.UNet import UNet
 from UNetpp.UNetpp import UNetPP
 from utils.datamaker.TFRecorder import TFRecorder
+from utils.losses.DiceLoss import DiceLoss
 
 from config import cfg
 
@@ -49,6 +50,7 @@ training_set, validation_set = TFRecorder().read_from_tfrecord(tf_record_files, 
 training_set = training_set.batch(batch_size=cfg.DATA.BATCH_SIZE)
 if validation_set:
     validation_set = validation_set.batch(batch_size=cfg.DATA.BATCH_SIZE)
+
 # =========================================== #
 # 构建神经网络
 # =========================================== #
@@ -109,14 +111,26 @@ if cfg.CALLBACKS.TENSOR_BOARD:
 
 if not callbacks:
     callbacks = None
+else:
+    os.mkdir(path=cfg.CALLBACKS.CHECK_POINT_DIR)
+    os.mkdir(path=cfg.CALLBACKS.CHECK_POINT_DIR + '/models')
+    os.mkdir(path=cfg.CALLBACKS.CHECK_POINT_DIR + '/logs')
 
 # =========================================== #
 # 编译神经网络
 # =========================================== #
+if cfg.TRAIN.LOSS.lower() == 'bce':
+    loss = 'binary_crossentropy'
+elif cfg.TRAIN.LOSS.lower() == 'dice':
+    loss = DiceLoss()
+else:
+    loss = None
+    assert 1 == 0
+
 model.compile(
     optimizer=cfg.TRAIN.OPTIMIZER,
-    loss=cfg.TRAIN.LOSS,
-    metrics=cfg.TRAIN.METRICS
+    loss=loss,
+    metrics=cfg.TRAIN.METRICS,
 )
 
 # =========================================== #

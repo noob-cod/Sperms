@@ -24,7 +24,7 @@ def mask_to_onehot(mask, palette):
 
 if __name__ == '__main__':
     # Load mask
-    single_mask_path = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/mask/DF1_373-1589.png'
+    single_mask_path = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/mask/DF1_210-1213_flip-lr.png'
     mask = Image.open(single_mask_path)
 
     # Preprocessing

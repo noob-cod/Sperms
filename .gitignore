@@ -19,10 +19,11 @@ dataset/UNet_dataset/training_set/src/process.py
 
 # 忽略模型文件
 *.h5
-*.mdf5
+*.hdf5
 
 # 忽略文件夹
 /src_dataset
 __pycache__
 /Test
 /Checkpoint
+/Outputs

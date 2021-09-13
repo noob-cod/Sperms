@@ -9,7 +9,8 @@ import numpy as np
 import tensorflow as tf
 
 from typing import List
-from utils.datamaker.one_hot_encode import mask_to_onehot
+from Code.utils.datamaker.one_hot_encode import mask_to_onehot
+from Code.config import cfg
 
 
 class TFRecorder:
@@ -111,6 +112,8 @@ class TFRecorder:
         """从.tfrecord文件中读数据，可选择是否划分验证集"""
         raw_dataset = tf.data.TFRecordDataset(tfrecord_files)
 
+        raw_dataset.shuffle(cfg.DATA.SHUFFLE_BUFFER_SIZE)
+
         # Protocol of decoding
         image_feature_description = {
             # 'img_height': tf.io.FixedLenFeature([], tf.int64),
@@ -140,6 +143,9 @@ class TFRecorder:
             feature_dict['mask'] = tf.io.decode_raw(feature_dict['mask'], tf.float32)  # Numpy to Tensor
             shape = [feature_dict['mask_height'], feature_dict['mask_width'], feature_dict['mask_depth']]
             feature_dict['mask'] = tf.reshape(feature_dict['mask'], shape=shape)
+            print(feature_dict['mask'].shape)
+            # feature_dict['mask'] = tf.io.decode_png(feature_dict['mask']) / 1
+            # feature_dict['mask'] = tf.cast(feature_dict['mask'], dtype=tf.float32)
 
             return feature_dict['img'], feature_dict['mask']
 

@@ -121,7 +121,7 @@ class UNetDataMaker:
                     )
                     tf.io.write_file(
                         os.path.join(self.patch_save_path, 'mask', img_name + '_{}-{}'.format(h, w) + '.png'),
-                        tf.io.encode_jpeg(msk_patch)
+                        tf.io.encode_png(msk_patch)
                     )
 
                     # 旋转
@@ -135,7 +135,7 @@ class UNetDataMaker:
                             tf.io.write_file(
                                 os.path.join(self.patch_save_path, 'mask',
                                              img_name + '_{}-{}_rot{}'.format(h, w, 90 * k) + '.png'),
-                                tf.io.encode_jpeg(tf.image.rot90(msk_patch, k))
+                                tf.io.encode_png(tf.image.rot90(msk_patch, k))
                             )
 
                     # 镜像
@@ -146,7 +146,7 @@ class UNetDataMaker:
                         )
                         tf.io.write_file(
                             os.path.join(self.patch_save_path, 'mask', img_name + '_{}-{}_flip-ud'.format(h, w) + '.png'),
-                            tf.io.encode_jpeg(tf.image.flip_up_down(msk_patch))
+                            tf.io.encode_png(tf.image.flip_up_down(msk_patch))
                         )
 
                         tf.io.write_file(
@@ -155,7 +155,7 @@ class UNetDataMaker:
                         )
                         tf.io.write_file(
                             os.path.join(self.patch_save_path, 'mask', img_name + '_{}-{}_flip-lr'.format(h, w) + '.png'),
-                            tf.io.encode_jpeg(tf.image.flip_left_right(msk_patch))
+                            tf.io.encode_png(tf.image.flip_left_right(msk_patch))
                         )
 
                     # 亮度
@@ -166,7 +166,7 @@ class UNetDataMaker:
                         )
                         tf.io.write_file(
                             os.path.join(self.patch_save_path, 'mask', img_name + '_{}-{}_bright'.format(h, w) + '.png'),
-                            tf.io.encode_jpeg(msk_patch)
+                            tf.io.encode_png(msk_patch)
                         )
 
                     count -= 1

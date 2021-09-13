@@ -12,6 +12,7 @@ cfg = __C
 __C.DATA = EasyDict()
 __C.TRAIN = EasyDict()
 __C.CALLBACKS = EasyDict()
+__C.TEST = EasyDict()
 
 # =============================================== #
 # 模型编译与训练参数设置
@@ -21,7 +22,7 @@ __C.CALLBACKS = EasyDict()
 __C.TRAIN.PATTERN = 'segmentation'
 
 # 损失函数
-__C.TRAIN.LOSS = 'binary_crossentropy'
+__C.TRAIN.LOSS = 'dice'
 
 # 优化器
 __C.TRAIN.OPTIMIZER = 'Adam'
@@ -30,7 +31,35 @@ __C.TRAIN.OPTIMIZER = 'Adam'
 __C.TRAIN.METRICS = ['accuracy']
 
 # 轮次
-__C.TRAIN.EPOCH = 10
+__C.TRAIN.EPOCH = 20
+
+# =============================================== #
+# Dataset设置
+# =============================================== #
+
+# 训练集图片路径
+__C.DATA.TRAIN_IMG = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/img'
+
+# 训练集mask路径
+__C.DATA.TRAIN_MSK = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/mask'
+
+# 测试集图片路径
+__C.DATA.TEST_IMG = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/test_set/src/img'
+
+# 测试集mask路径
+__C.DATA.TEST_MSK = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/test_set/src/mask'
+
+# 训练集tfrecord路径
+__C.DATA.TRAINING_TFRECORD = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/tfrecord'
+
+# 训练集打乱时的缓存区大小
+__C.DATA.SHUFFLE_BUFFER_SIZE = 1000
+
+# 实际训练样本占总训练样本的比例
+__C.DATA.TRAINING_RATIO = 0.8
+
+# 训练集的batch_size
+__C.DATA.BATCH_SIZE = 8
 
 # =============================================== #
 # UNet & UNet++ Training Options
@@ -81,8 +110,16 @@ __C.CALLBACKS.REDUCE_LR_MIN_LR = 0.00001
 __C.CALLBACKS.REDUCE_LR_VERBOSE = 1
 
 # tf.keras.callbacks.ModelCheckpoint设置
+__C.CALLBACKS.CHECK_POINT_DIR = '/home/bmp/ZC/Sperms/Checkpoint/' + __C.TRAIN.MODEL + '/' + \
+                                'Filters-' + str(__C.TRAIN.UNET_FILTER_ROOT) + \
+                                '_BatchSize-' + str(__C.DATA.BATCH_SIZE) + \
+                                '_Depth-' + str(__C.TRAIN.UNET_DEPTH) + \
+                                '_Epoch-' + str(__C.TRAIN.EPOCH) + \
+                                '_Loss-' + __C.TRAIN.LOSS + \
+                                '_OPTIMIZER-' + __C.TRAIN.OPTIMIZER
 __C.CALLBACKS.CHECK_POINT = True
-__C.CALLBACKS.CHECK_POINT_FILEPATH = 'Model-EPOCH:{epoch:02d}-ACC:{acc:.4f}-VAL_ACC:{val_acc:.4f}.h5'
+__C.CALLBACKS.CHECK_POINT_FILEPATH = __C.CALLBACKS.CHECK_POINT_DIR + '/models' + \
+                                     '/Model-epoch_{epoch:02d}-acc_{accuracy:.4f}-val_acc_{val_accuracy:.4f}.h5'
 __C.CALLBACKS.CHECK_POINT_MONITOR = 'val_loss'
 __C.CALLBACKS.CHECK_POINT_VERBOSE = 1
 __C.CALLBACKS.CHECK_POINT_SAVE_BEST = False
@@ -92,35 +129,17 @@ __C.CALLBACKS.CHECK_POINT_SAVE_FREQ = 'epoch'
 
 # tf.keras.callbacks.TensorBoard设置
 __C.CALLBACKS.TENSOR_BOARD = True
-__C.CALLBACKS.TENSOR_BOARD_LOG_DIR = '/home/bmp/ZC/Sperms/Checkpoint/UNet/logs'
+__C.CALLBACKS.TENSOR_BOARD_LOG_DIR = __C.CALLBACKS.CHECK_POINT_DIR + '/logs'
 __C.CALLBACKS.TENSOR_BOARD_HISTOGRAM_FREQ = 0
 __C.CALLBACKS.TENSOR_BOARD_GRAPH = False
 __C.CALLBACKS.TENSOR_BOARD_UPDATE_FREQ = 'epoch'
 
 # =============================================== #
-# Dataset设置
+# Test设置
 # =============================================== #
 
-# 训练集图片路径
-__C.DATA.TRAIN_IMG = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/img'
+# 测试输入
+__C.TEST.INPUT_SHAPE = (2448, 3264, 3)
 
-# 训练集mask路径
-__C.DATA.TRAIN_MSK = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/mask'
-
-# 测试集图片路径
-__C.DATA.TEST_IMG = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/test/src/img'
-
-# 测试集mask路径
-__C.DATA.TEST_MSK = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/test/src/mask'
-
-# 训练集tfrecord路径
-__C.DATA.TRAINING_TFRECORD = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/tfrecord'
-
-# 训练集打乱时的缓存区大小
-__C.DATA.SHUFFLE_BUFFER_SIZE = 1000
-
-# 实际训练样本占总训练样本的比例
-__C.DATA.TRAINING_RATIO = 0.8
-
-# 训练集的batch_size
-__C.DATA.BATCH_SIZE = 4
+# 测试输出保存路径
+__C.TEST.SAVE_PATH = '/home/bmp/ZC/Sperms/Outputs/UNet'

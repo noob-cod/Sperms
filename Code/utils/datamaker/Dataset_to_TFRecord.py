@@ -21,7 +21,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from one_hot_encode import mask_to_onehot
+from Code.utils.datamaker.one_hot_encode import mask_to_onehot
 
 from tensorflow.keras.losses import binary_crossentropy
 
@@ -147,24 +147,69 @@ def tfrecord_read(record_file: [str]):
     return dataset
 
 
+def tfrecord_checkout(record_file, n=1):
+    raw_data_set = tf.data.TFRecordDataset(record_file)
+
+    # Protocol of decoding
+    image_feature_description = {
+        # 'img_height': tf.io.FixedLenFeature([], tf.int64),
+        # 'img_width': tf.io.FixedLenFeature([], tf.int64),
+        # 'img_depth': tf.io.FixedLenFeature([], tf.int64),
+        'img': tf.io.FixedLenFeature([], tf.string),
+
+        # 'mask_height': tf.io.FixedLenFeature([], tf.int64),
+        # 'mask_width': tf.io.FixedLenFeature([], tf.int64),
+        # 'mask_raw': tf.io.FixedLenFeature([], tf.string),
+
+        # one_hot
+        'mask_height': tf.io.FixedLenFeature([], tf.int64),
+        'mask_width': tf.io.FixedLenFeature([], tf.int64),
+        'mask_depth': tf.io.FixedLenFeature([], tf.int64),
+        'mask': tf.io.FixedLenFeature([], tf.string)
+    }
+
+    def _parse_image_function(example_proto):
+        """TFRecord Decoder"""
+        # Parse the input tf.train.Example proto using the dictionary above
+        feature_dict = tf.io.parse_single_example(example_proto, image_feature_description)
+        feature_dict['img'] = tf.io.decode_jpeg(feature_dict['img']) / 255  # Decode raw img
+        # feature_dict['mask_raw'] = tf.io.decode_png(feature_dict['mask_raw'])
+
+        # one_hot
+        feature_dict['mask'] = tf.io.decode_raw(feature_dict['mask'], tf.float32)  # Numpy to Tensor
+        shape = [feature_dict['mask_height'], feature_dict['mask_width'], feature_dict['mask_depth']]
+        feature_dict['mask'] = tf.reshape(feature_dict['mask'], shape=shape)
+
+        return feature_dict['img'], feature_dict['mask']
+
+    dataset = raw_data_set.map(_parse_image_function)
+    dataset = list(dataset)[:n]
+
+    for i in range(n):
+        img = dataset[i][0]
+        msk = dataset[i][1]
+
+        plt.subplot(3, 3, 1)
+        plt.imshow(img)
+        plt.subplot(3, 3, 2)
+        plt.imshow(msk[:, :, 0])
+        plt.subplot(3, 3, 3)
+        plt.imshow(msk[:, :, 1])
+        plt.subplot(3, 3, 4)
+        plt.imshow(msk[:, :, 2])
+        plt.subplot(3, 3, 5)
+        plt.imshow(msk[:, :, 3])
+        plt.subplot(3, 3, 6)
+        plt.imshow(msk[:, :, 4])
+
+        plt.show()
+
+
 if __name__ == '__main__':
-    record = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/training_set.tfrecord'
-    img_path = '/dataset/UNet_dataset/training_set/img'
-    mask_path = '/dataset/UNet_dataset/training_set/mask'
-    tfrecord_write(record, img_path, mask_path)
+    record = '/home/bmp/ZC/Sperms/dataset/UNet_dataset/training_set/tfrecord'
+    # img_path = '/dataset/UNet_dataset/training_set/img'
+    # mask_path = '/dataset/UNet_dataset/training_set/mask'
+    # tfrecord_write(record, img_path, mask_path)
     # dataset = tfrecord_read(record)
 
-    # i = 0
-    # for image, mask in dataset.take(3):
-    #     i += 1
-    #     plt.title('img')
-    #     plt.imshow(image.numpy())
-    #     plt.savefig('img_%d' % i)
-    #     plt.show()
-    #
-    #     for i in range(mask.shape[2]):
-    #         plt.title('mask')
-    #         plt.imshow(mask[:, :, i].numpy().squeeze())
-    #         plt.savefig('mask_%d' % i)
-    #         plt.show()
-    #         print(mask.shape)
+    tfrecord_checkout(os.path.join(record, 'train_set_0.tfrecord'), n=10)
