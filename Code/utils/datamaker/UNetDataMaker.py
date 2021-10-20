@@ -36,7 +36,7 @@ import tensorflow as tf
 
 class UNetDataMaker:
 
-    THRESH_HOLD = 100  # 目标特征能够传播到最后一层的最小面积，值越大，裁剪出的图像中包含的带标签的区域越大
+    THRESH_HOLD = 625  # 目标特征能够传播到最后一层的最小面积，值越大，裁剪出的图像中包含的带标签的区域越大
 
     def __init__(self,
                  img_file_path,

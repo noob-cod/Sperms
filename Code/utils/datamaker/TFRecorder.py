@@ -143,7 +143,7 @@ class TFRecorder:
             feature_dict['mask'] = tf.io.decode_raw(feature_dict['mask'], tf.float32)  # Numpy to Tensor
             shape = [feature_dict['mask_height'], feature_dict['mask_width'], feature_dict['mask_depth']]
             feature_dict['mask'] = tf.reshape(feature_dict['mask'], shape=shape)
-            print(feature_dict['mask'].shape)
+            # print(feature_dict['mask'].shape)
             # feature_dict['mask'] = tf.io.decode_png(feature_dict['mask']) / 1
             # feature_dict['mask'] = tf.cast(feature_dict['mask'], dtype=tf.float32)
 

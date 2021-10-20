@@ -91,14 +91,14 @@ class UNet:
                 if self.dropout != 0:
                     x = Dropout(self.dropout, name='encode_fl{}_dropout'.format(self.depth))(x)
 
-                x = Conv2D(filter_nums, [3, 3], kernel_initializer=self.kern_ini_type, padding='same'
-                           , name='encode_fl{}_conv1'.format(self.depth))(x)
+                x = Conv2D(filter_nums, [3, 3], kernel_initializer=self.kern_ini_type, padding='same',
+                           name='encode_fl{}_conv1'.format(self.depth))(x)
                 if self.batch_norm:
                     x = BatchNormalization(name='encode_fl{}_BN1'.format(self.depth))(x)
                 x = Activation(self.activation_type, name='encode_fl{}_act1'.format(self.depth))(x)
 
-                x = Conv2D(filter_nums, [3, 3], kernel_initializer=self.kern_ini_type, padding='same'
-                           , name='encode_fl{}_conv2'.format(self.depth))(x)
+                x = Conv2D(filter_nums, [3, 3], kernel_initializer=self.kern_ini_type, padding='same',
+                           name='encode_fl{}_conv2'.format(self.depth))(x)
                 if self.batch_norm:
                     x = BatchNormalization(name='encode_fl{}_BN2'.format(self.depth))(x)
                 x = Activation(self.activation_type, name='encode_fl{}_act2'.format(self.depth))(x)
@@ -109,8 +109,8 @@ class UNet:
             # 利用“上采样+卷积”来模拟“反卷积”，避免棋盘格效应
             # convtp = convolve transpose
             x = UpSampling2D(size=(2, 2), name='decode_fl{}_convtp_upsampling'.format(floor+1))(x)
-            x = Conv2D(filter_nums, [3, 3], kernel_initializer=self.kern_ini_type, padding='same'
-                       , name='decode_fl{}_convtp_conv'.format(floor+1))(x)
+            x = Conv2D(filter_nums, [3, 3], kernel_initializer=self.kern_ini_type, padding='same',
+                       name='decode_fl{}_convtp_conv'.format(floor+1))(x)
 
             if log:
                 print('在扩展路径上，Floor {}的输出维度为：Batch:{}, Width:{}, Height:{}, Channels:{}'.format(

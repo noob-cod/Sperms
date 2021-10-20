@@ -2,7 +2,7 @@
 .idea/
 *.iml
 *.tfrecord
-dataset/UNet_dataset/training_set/src/process.py
+Code/utils/datamaker/rgb_to_uint8.py
 
 
 # 忽略图片文件

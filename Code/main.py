@@ -1,21 +1,32 @@
 """
-@Date: 2021/9/3 下午2:36
+@Date: 2021/10/20 下午7:51
 @Author: Chen Zhang
-@Brief: 训练
+@Brief: 支持单机多卡分布式训练
 """
 import os
+import tensorflow as tf
 
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau, ModelCheckpoint
 
 from UNet.UNet import UNet
-from UNetpp.UNetpp import UNetPP
+from UNetpp.UNetPP import UNetPP
 from utils.datamaker.TFRecorder import TFRecorder
 from utils.losses.DiceLoss import DiceLoss
+from utils.losses.FocalLoss import FocalLoss
+from utils.losses.UNetPPLoss import DeepSupLoss
 
 from config import cfg
 
+strategy = None
+GLOBAL_BATCH_SIZE = None
+if cfg.TRAIN.DISTRIBUTE_FLAG:
+    # 创建新的分布式训练策略
+    strategy = tf.distribute.MirroredStrategy(devices=cfg.TRAIN.DISTRIBUTE_DEVICES)
 
-patterns = {
+    # 全局批尺寸 = 单卡批尺寸 * 卡数量
+    GLOBAL_BATCH_SIZE = cfg.TRAIN.BATCH_SIZE * strategy.num_replicas_in_sync
+
+PATTERNS = {
     'segmentation': {
         'UNet': UNet,
         'UNet++': UNetPP
@@ -26,15 +37,8 @@ patterns = {
 }
 
 # =========================================== #
-# 数据预处理
-# =========================================== #
-
-# 已经在utils.datamaker.UNetDataMaker.py中完成
-
-# =========================================== #
 # 构建数据集
 # =========================================== #
-
 # 记录所有训练用的tfrecord文件路径
 tf_record_files = []
 for name in os.listdir(cfg.DATA.TRAINING_TFRECORD):
@@ -42,34 +46,112 @@ for name in os.listdir(cfg.DATA.TRAINING_TFRECORD):
 
 # 计算参与训练的数据的数量
 train_set_nums = None
-if cfg.DATA.TRAINING_RATIO:
-    train_set_nums = round(len(os.listdir(cfg.DATA.TRAIN_IMG)) * cfg.DATA.TRAINING_RATIO)
+if cfg.TRAIN.TRAINING_RATIO:
+    train_set_nums = round(len(os.listdir(cfg.DATA.TRAIN_IMG)) * cfg.TRAIN.TRAINING_RATIO)
 
 # 若不划分验证集，则validation_set为None
 training_set, validation_set = TFRecorder().read_from_tfrecord(tf_record_files, train_set_nums=train_set_nums)
-training_set = training_set.batch(batch_size=cfg.DATA.BATCH_SIZE)
-if validation_set:
-    validation_set = validation_set.batch(batch_size=cfg.DATA.BATCH_SIZE)
+
+# 生成batch
+if cfg.TRAIN.DISTRIBUTE_FLAG:
+    training_set = training_set.batch(batch_size=GLOBAL_BATCH_SIZE)
+    if validation_set:
+        validation_set = validation_set.batch(batch_size=GLOBAL_BATCH_SIZE)
+else:
+    training_set = training_set.batch(batch_size=cfg.TRAIN.BATCH_SIZE)
+    if validation_set:
+        validation_set = validation_set.batch(batch_size=cfg.TRAIN.BATCH_SIZE)
 
 # =========================================== #
 # 构建神经网络
 # =========================================== #
-if cfg.TRAIN.PATTERN == 'segmentation':
-    my_model = patterns[cfg.TRAIN.PATTERN][cfg.TRAIN.MODEL](
-        input_shape=cfg.TRAIN.UNET_INPUT_SHAPE,
-        filter_root=cfg.TRAIN.UNET_FILTER_ROOT,
-        depth=cfg.TRAIN.UNET_DEPTH,
-        out_dim=cfg.TRAIN.UNET_OUT_DIM,
-        activation_type=cfg.TRAIN.UNET_ACTIVATION,
-        kernel_initializer_type=cfg.TRAIN.UNET_KERNEL_INITIALIZER,
-        batch_norm=cfg.TRAIN.UNET_BATCH_NORMALIZATION
-    )
-    model = my_model.get_model()
-elif cfg.TRAIN.PATTERN == 'detection':
-    model = None
-else:
-    model = None
+if cfg.MODEL.PATTERN == 'segmentation':
+    if PATTERNS[cfg.MODEL.PATTERN] == 'UNet++':
+        my_model = PATTERNS[cfg.MODEL.PATTERN][cfg.MODEL.TYPE](
+            input_shape=cfg.MODEL.UNET_INPUT_SHAPE,
+            filter_root=cfg.MODEL.UNET_FILTER_ROOT,
+            depth=cfg.MODEL.UNET_DEPTH,
+            out_dim=cfg.MODEL.UNET_OUT_DIM,
+            activation_type=cfg.MODEL.UNET_ACTIVATION,
+            kernel_initializer_type=cfg.MODEL.UNET_KERNEL_INITIALIZER,
+            batch_norm=cfg.MODEL.UNET_BATCH_NORMALIZATION,
+            deep_supervision=cfg.MODEL.UNETPP_DEEP_SUPERVISION
+        )
+    else:
+        my_model = PATTERNS[cfg.MODEL.PATTERN][cfg.MODEL.TYPE](
+            input_shape=cfg.MODEL.UNET_INPUT_SHAPE,
+            filter_root=cfg.MODEL.UNET_FILTER_ROOT,
+            depth=cfg.MODEL.UNET_DEPTH,
+            out_dim=cfg.MODEL.UNET_OUT_DIM,
+            activation_type=cfg.MODEL.UNET_ACTIVATION,
+            kernel_initializer_type=cfg.MODEL.UNET_KERNEL_INITIALIZER,
+            batch_norm=cfg.MODEL.UNET_BATCH_NORMALIZATION
+        )
+elif cfg.MODEL.PATTERN == 'detection':
+    my_model = None
     assert 1 == 0, '不存在的模式!'
+else:
+    my_model = None
+    assert 1 == 0, '不存在的模式!'
+
+if cfg.TRAIN.DISTRIBUTE_FLAG:
+    with strategy.scope():
+        model = my_model.get_model()
+else:
+    model = my_model.get_model()
+
+# =========================================== #
+# 编译神经网络
+# =========================================== #
+loss_dict = {
+    'bce': 'binary_crossentropy',
+    'dice': DiceLoss,
+    'fcl': FocalLoss,
+    'bcedice': DeepSupLoss
+}
+
+metric_dict = {
+    'precision': tf.keras.metrics.Precision,
+    'miou': tf.keras.metrics.MeanIoU
+}
+
+if cfg.TRAIN.DISTRIBUTE_FLAG:
+    with strategy.scope():
+        # loss
+        loss = loss_dict[cfg.TRAIN.LOSS.lower()]()
+
+        # metrics
+        metrics = ['accuracy']
+        for item in cfg.TRAIN.METRICS:
+            if item != 'miou':
+                metrics.append(metric_dict[item]())
+            else:
+                metrics.append(metric_dict[item](num_classes=5))
+
+        # compile
+        model.compile(
+            optimizer=cfg.TRAIN.OPTIMIZER,
+            loss=loss,
+            metrics=metrics
+        )
+else:
+    # loss
+    loss = loss_dict[cfg.TRAIN.LOSS.lower()]()
+
+    # metrics
+    metrics = ['accuracy']
+    for item in cfg.TRAIN.METRICS:
+        if item != 'miou':
+            metrics.append(metric_dict[item]())
+        else:
+            metrics.append(metric_dict[item](num_classes=5))
+
+    # compile
+    model.compile(
+        optimizer=cfg.TRAIN.OPTIMIZER,
+        loss=loss,
+        metrics=metrics
+    )
 
 # =========================================== #
 # 设置callbacks
@@ -117,25 +199,9 @@ else:
     os.mkdir(path=cfg.CALLBACKS.CHECK_POINT_DIR + '/logs')
 
 # =========================================== #
-# 编译神经网络
-# =========================================== #
-if cfg.TRAIN.LOSS.lower() == 'bce':
-    loss = 'binary_crossentropy'
-elif cfg.TRAIN.LOSS.lower() == 'dice':
-    loss = DiceLoss()
-else:
-    loss = None
-    assert 1 == 0
-
-model.compile(
-    optimizer=cfg.TRAIN.OPTIMIZER,
-    loss=loss,
-    metrics=cfg.TRAIN.METRICS,
-)
-
-# =========================================== #
 # 训练
 # =========================================== #
+
 model.fit(
     training_set,
     epochs=cfg.TRAIN.EPOCH,

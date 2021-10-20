@@ -8,13 +8,14 @@ import cv2
 import tensorflow as tf
 
 from UNet.UNet import UNet
-from UNetpp.UNetpp import UNetPP
+# from UNetpp.UNetpp import UNetPP
+from UNetpp.UNetPP import UNetPP
 from utils.datamaker.TFRecorder import TFRecorder
 
 from config import cfg
 
 
-patterns = {
+PATTERNS = {
     'segmentation': {
         'UNet': UNet,
         'UNet++': UNetPP
@@ -25,27 +26,27 @@ patterns = {
     }
 }
 
-if cfg.TRAIN.PATTERN == 'segmentation':
-    my_model = patterns[cfg.TRAIN.PATTERN][cfg.TRAIN.MODEL](
+if cfg.MODEL.PATTERN == 'segmentation':
+    my_model = PATTERNS[cfg.MODEL.PATTERN][cfg.MODEL.TYPE](
         input_shape=cfg.TEST.INPUT_SHAPE,
-        filter_root=cfg.TRAIN.UNET_FILTER_ROOT,
-        depth=cfg.TRAIN.UNET_DEPTH,
-        out_dim=cfg.TRAIN.UNET_OUT_DIM,
-        activation_type=cfg.TRAIN.UNET_ACTIVATION,
-        kernel_initializer_type=cfg.TRAIN.UNET_KERNEL_INITIALIZER,
-        batch_norm=cfg.TRAIN.UNET_BATCH_NORMALIZATION
+        filter_root=cfg.MODEL.UNET_FILTER_ROOT,
+        depth=cfg.MODEL.UNET_DEPTH,
+        out_dim=cfg.MODEL.UNET_OUT_DIM,
+        activation_type=cfg.MODEL.UNET_ACTIVATION,
+        kernel_initializer_type=cfg.MODEL.UNET_KERNEL_INITIALIZER,
+        batch_norm=cfg.MODEL.UNET_BATCH_NORMALIZATION
     )
     model = my_model.get_model()
-elif cfg.TRAIN.PATTERN == 'detection':
+elif cfg.MODEL.PATTERN == 'detection':
     model = None
 else:
     model = None
 
 
-checkpoint_dir = 'Filters-16_BatchSize-8_Depth-5_Epoch-20_Loss-dice_OPTIMIZER-Adam'
-model_name = 'Model-epoch_11-acc_0.9671-val_acc_0.9675.h5'
+checkpoint_dir = 'Filters-16_BatchSize-16_Depth-5_Epoch-3_Loss-bcedice_OPTIMIZER-Adam'
+model_name = 'Model-epoch_01-acc_0.9297-val_acc_0.9860-.h5'
 
-model.load_weights('/home/bmp/ZC/Sperms/Checkpoint/UNet/' +
+model.load_weights('/home/bmp/ZC/Sperms/Checkpoint/' + cfg.MODEL.TYPE + '/' +
                    checkpoint_dir + '/'
                    'models/' +
                    model_name)
@@ -58,6 +59,9 @@ img_names = os.listdir(cfg.DATA.TEST_IMG)
 for name in img_names:
     img = tf.io.read_file(os.path.join(cfg.DATA.TEST_IMG, name))
     img = tf.io.decode_image(img) / 255
+
+    img = tf.image.resize_with_pad(img, 896, 1024)
+
     img = tf.expand_dims(img, axis=0)
     print(img.shape)
     result = model.predict(img)
@@ -69,7 +73,7 @@ for name in img_names:
     print(result.shape)
 
     pred_BG = result[:, :, 0]  # 顶体未发生反应
-    pred_BG = tf.expand_dims(pred_BG, axis=-1)
+    pred_BG = tf.expand_dims(pred_BG, axis=-1)  # 添加单个通道，存储为灰度图
     pred_BG = tf.io.encode_png(pred_BG)
     tf.io.write_file(os.path.join(second_path, name + '_BG.png'), pred_BG)
 
@@ -92,4 +96,4 @@ for name in img_names:
     pred_OTHERS = tf.expand_dims(pred_OTHERS, axis=-1)
     pred_OTHERS = tf.io.encode_png(pred_OTHERS)
     tf.io.write_file(os.path.join(second_path, name[:-4] + '_OTHERS.png'), pred_OTHERS)
-    break
+    # break

@@ -11,9 +11,9 @@ from Code.config import cfg
 
 
 output_path = '/home/bmp/ZC/Sperms/Outputs/'
-model = cfg.TRAIN.MODEL
+model = cfg.MODEL.TYPE
 
-img_path = os.path.join(output_path, model)
+img_path = os.path.join(output_path, model, 'Filters-16_BatchSize-16_Depth-5_Epoch-20_Loss-dice_OPTIMIZER-Adam/Model-epoch_20-acc_0.8598-val_acc_0.9204.h5')
 
 img_files = os.listdir(img_path)
 
