@@ -3,6 +3,7 @@
 @Author: Chen Zhang
 @Brief:
 """
+import datetime
 import tensorflow as tf
 from easydict import EasyDict
 
@@ -34,22 +35,24 @@ __C.TRAIN.LOSS = 'bcedice'
 # 优化器
 __C.TRAIN.OPTIMIZER = 'Adam'
 
+# 初始学习速率
+__C.TRAIN.LR = 0.01
+
 # 监控窗口
 __C.TRAIN.METRICS = [
-    'precision',
     'miou'
 ]
 # 轮次
-__C.TRAIN.EPOCH = 3
+__C.TRAIN.EPOCH = 100
 
 # 实际训练样本占总训练样本的比例
 __C.TRAIN.TRAINING_RATIO = 0.8
 
 # 训练集的batch_size，多卡训练时为每张卡的batch size
-__C.TRAIN.BATCH_SIZE = 16
+__C.TRAIN.BATCH_SIZE = 8
 
 # 是否进行分布式训练
-__C.TRAIN.DISTRIBUTE_FLAG = False
+__C.TRAIN.DISTRIBUTE_FLAG = True
 
 # 指定gpu
 __C.TRAIN.DISTRIBUTE_DEVICES = ['/gpu:0', '/gpu:1']
@@ -116,6 +119,11 @@ __C.DATA.SHUFFLE_BUFFER_SIZE = 500
 # 设置callbacks
 # =============================================== #
 
+# tf.keras.callbacks.LRSchedule设置
+__C.CALLBACKS.LR_SCHEDULER = False
+__C.CALLBACKS.LR_SCHEDULE_ID = 0
+__C.CALLBACKS.LR_SCHEDULER_VERBOSE = 1
+
 # tf.keras.callbacks.EarlyStopping设置
 __C.CALLBACKS.EARLY_STOPPING = False
 __C.CALLBACKS.EARLY_STOPPING_PATIENCE = 10
@@ -135,7 +143,9 @@ __C.CALLBACKS.CHECK_POINT_DIR = '/home/bmp/ZC/Sperms/Checkpoint/' + __C.MODEL.TY
                                 '_Depth-' + str(__C.MODEL.UNET_DEPTH) + \
                                 '_Epoch-' + str(__C.TRAIN.EPOCH) + \
                                 '_Loss-' + __C.TRAIN.LOSS + \
-                                '_OPTIMIZER-' + __C.TRAIN.OPTIMIZER
+                                '_Optimizer-' + __C.TRAIN.OPTIMIZER + \
+                                '_InitLR-' + str(__C.TRAIN.LR) + \
+                                '_Time-' + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")  # 年-月-日-时-分
 __C.CALLBACKS.CHECK_POINT = True
 __C.CALLBACKS.CHECK_POINT_FILEPATH = __C.CALLBACKS.CHECK_POINT_DIR + '/models' + \
                                      '/Model-epoch_{epoch:02d}-acc_{accuracy:.4f}-val_acc_{val_accuracy:.4f}-' \

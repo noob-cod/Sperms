@@ -6,14 +6,15 @@
 import os
 import tensorflow as tf
 
-from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau, ModelCheckpoint
-
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, LearningRateScheduler
 from UNet.UNet import UNet
 from UNetpp.UNetPP import UNetPP
 from utils.datamaker.TFRecorder import TFRecorder
 from utils.losses.DiceLoss import DiceLoss
 from utils.losses.FocalLoss import FocalLoss
 from utils.losses.UNetPPLoss import DeepSupLoss
+from utils.lr_schedule import LRScheduleManager
 
 from config import cfg
 
@@ -110,6 +111,10 @@ loss_dict = {
     'bcedice': DeepSupLoss
 }
 
+optimizer_dict = {
+    'adam': tf.keras.optimizers.Adam
+}
+
 metric_dict = {
     'precision': tf.keras.metrics.Precision,
     'miou': tf.keras.metrics.MeanIoU
@@ -119,6 +124,9 @@ if cfg.TRAIN.DISTRIBUTE_FLAG:
     with strategy.scope():
         # loss
         loss = loss_dict[cfg.TRAIN.LOSS.lower()]()
+
+        # optimizer
+        optimizer = optimizer_dict[cfg.TRAIN.OPTIMIZER.lower()](learning_rate=cfg.TRAIN.LR)
 
         # metrics
         metrics = ['accuracy']
@@ -157,6 +165,12 @@ else:
 # 设置callbacks
 # =========================================== #
 callbacks = []
+
+if cfg.CALLBACKS.LR_SCHEDULER:
+    callbacks.append(LearningRateScheduler(
+        schedule=LRScheduleManager().get_schedule(id=cfg.CALLBACKS.LR_SCHEDULE_ID),
+        verbose=cfg.CALLBACKS.LR_SCHEDULER_VERBOSE
+    ))
 
 if cfg.CALLBACKS.EARLY_STOPPING:
     callbacks.append(EarlyStopping(

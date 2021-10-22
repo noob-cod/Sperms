@@ -43,8 +43,8 @@ else:
     model = None
 
 
-checkpoint_dir = 'Filters-16_BatchSize-16_Depth-5_Epoch-3_Loss-bcedice_OPTIMIZER-Adam'
-model_name = 'Model-epoch_01-acc_0.9297-val_acc_0.9860-.h5'
+checkpoint_dir = 'Filters-16_BatchSize-8_Depth-5_Epoch-100_Loss-bcedice_OPTIMIZER-Adam_DATE-2021-10-21-16-06'
+model_name = 'Model-epoch_04-acc_0.9868-val_acc_0.9858-.h5'
 
 model.load_weights('/home/bmp/ZC/Sperms/Checkpoint/' + cfg.MODEL.TYPE + '/' +
                    checkpoint_dir + '/'
