@@ -6,41 +6,37 @@
 import tensorflow as tf
 
 from tensorflow.keras.losses import Loss
+from Code.utils.losses.DiceLoss import DiceLoss
 from Code.config import cfg
 
 
 class DeepSupLoss(Loss):
 
-    def call(self, y_true, y_pred, dice_smooth=1e-5):
-        # 计算binary cross-entropy
+    def call(self, y_true, y_pred):
+        y_pred = tf.convert_to_tensor(y_pred)
+        # print(y_pred.shape)
+
+        b, h, w, c = y_pred.shape
+
+        # 计算bce和dice
         if cfg.TRAIN.DISTRIBUTE_FLAG:
-            bce = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)(y_true, y_pred)
+            bce = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.SUM)(y_true, y_pred)
+            # print(y_pred.shape)
+            # if cfg.MODEL.TYPE == 'UNet++' and cfg.MODEL.UNETPP.DEEP_SUPERVISION:
+            #     bce_factor = tf.convert_to_tensor(b*h*w, dtype=tf.float32)
+            # else:
+            bce_factor = tf.convert_to_tensor(h*w, dtype=tf.float32)
+            # # print('factor_0:', bce_factor)
+            bce = tf.math.divide(bce, bce_factor)
+            dice_loss = DiceLoss(reduction=tf.keras.losses.Reduction.SUM)(y_true, y_pred)
+            # if cfg.MODEL.TYPE == 'UNet++' and cfg.MODEL.UNETPP.DEEP_SUPERVISION:
+            #     dice_factor = tf.convert_to_tensor(b * c, dtype=tf.float32)
+            # else:
+            dice_factor = tf.convert_to_tensor(c, dtype=tf.float32)
+            dice_loss = tf.math.divide(dice_loss, dice_factor)
         else:
             bce = tf.keras.losses.BinaryCrossentropy()(y_true, y_pred)
-
-        # 计算dice
-        # 交集和并集
-        if not isinstance(y_pred, list):
-            intersection = tf.reduce_sum(tf.math.multiply(y_true, y_pred), axis=[0, 1])
-            union = tf.reduce_sum(y_true, axis=[0, 1]) + tf.reduce_sum(y_pred, axis=[0, 1])
-
-            dice = (2.0 * intersection + dice_smooth) / (union + dice_smooth)
-            dice_loss = tf.reduce_sum(1-dice) / 5  # sum(1 - dice) / 5
-        else:
-            nums = len(y_pred)
-            # print('nums:', nums)
-            dice_loss = tf.constant(0, dtype=tf.float32)
-            for i in range(nums):
-                intersection = tf.reduce_sum(tf.math.multiply(y_true, y_pred[i]), axis=[0, 1])
-                union = tf.reduce_sum(y_true, axis=[0, 1]) + tf.reduce_sum(y_pred[i], axis=[0, 1])
-
-                dice = (2.0 * intersection + dice_smooth) / (union + dice_smooth)
-                # print('dice:', dice)
-                dice_loss += tf.reduce_sum(1-dice) / 5  # sum(1-dice) / 5
-                # print('dice loss:', 1-dice)
-                # print('total dice loss:', dice_loss)
-                # print()
-            dice_loss = dice_loss / nums
+            dice_loss = DiceLoss()(y_true, y_pred)
 
         total_loss = 0.5 * (bce + dice_loss)
 
@@ -58,4 +54,15 @@ if __name__ == '__main__':
          [[1.0, 0.4, 0.5, 0.5, 0.1], [0.4, 0.6, 0.7, 0.6, 0.2]]]
     )
     print(pred.shape)
-    print(DeepSupLoss()(true, [pred, pred+0.1, pred-0.1]))
+    # bce = tf.keras.losses.BinaryCrossentropy()(true, pred)
+    # print('bce:', tf.math.reduce_mean(bce))
+    # dice = DiceLoss()(true, pred)
+    # print('dice:', dice)
+    # print('bce_dice:', (bce + dice) / 2)
+    print(DeepSupLoss()(true, [pred, pred, pred]))
+
+    # print('BCE:')
+    # print(tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)(true, [pred, pred, pred]))
+    # print()
+    # print('Dice:')
+    # print(DiceLoss(reduction=tf.keras.losses.Reduction.NONE)(true, [pred, pred, pred]))

@@ -9,27 +9,36 @@
 """
 import tensorflow as tf
 
-from typing import List
-from CNN import CNN
-from TransformerLayer import TransformerLayer
+from typing import List, Tuple
+from Code.TransUNet.CNN import CNN
+from Code.TransUNet.TransformerLayer import TransformerLayer
+from Code.config import cfg
+
+CNN_BLOCK = {
+    'cnn': CNN
+}
 
 
 class TransUnet:
 
     def __init__(self,
-                 input_dim: List,
-                 out_dim: int,
-                 cnn_model: tf.keras.Model,
-                 cnn_filter_root: int,
-                 tfl_num: int,
-                 patch_size: int,
-                 d_model: int,
-                 num_heads: int,
-                 dff: int,
-                 dropout_rate: float = 0.8
+                 input_shape: List or Tuple = cfg.MODEL.INPUT_SHAPE,
+                 out_dim: int = cfg.MODEL.TRANSUNET.OUT_DIM,
+                 cnn_model: str = cfg.MODEL.TRANSUNET.CNN_BLOCK,
+                 cnn_filter_root: int = cfg.MODEL.TRANSUNET.FILTER_ROOT,
+                 tfl_num: int = cfg.MODEL.TRANSUNET.TRANSFORMER_LAYER_NUM,
+                 patch_size: int = cfg.MODEL.TRANSUNET.PATCH_SIZE,
+                 d_model: int = cfg.MODEL.TRANSUNET.D_MODEL,
+                 num_heads: int = cfg.MODEL.TRANSUNET.HEAD_NUM,
+                 dff: int = cfg.MODEL.TRANSUNET.DFF,
+                 dec_block_num: int = cfg.MODEL.TRANSUNET.DECODER_BLOCK_NUM,
+                 dec_block_filter_root: int = cfg.MODEL.TRANSUNET.DECODER_FILTER_ROOT,
+                 dropout_rate: float = cfg.MODEL.TRANSUNET.DROPOUT,
+                 activation_type: str = cfg.MODEL.TRANSUNET.ACTIVATION,
+                 kernel_initializer: str = cfg.MODEL.TRANSUNET.KERNEL_INITIALIZER
                  ):
         """
-        :param input_dim: 输入图像的维度，(Batch, H, W, C)
+        :param input_shape: 输入图像的维度，(Batch, H, W, C)
         :param out_dim: 输出通道数
         :param cnn_model: CNN特征提取器
         :param cnn_filter_root: CNN第一层的卷积核
@@ -38,18 +47,25 @@ class TransUnet:
         :param d_model: Self-attention编码的维度
         :param num_heads: 多头的头数
         :param dff: 点式前馈模块首层的维度
+        :param dec_block_num: 解码器卷积层堆叠数量
+        :param dec_block_filter_root: 解码器底层卷积核数量
         :param dropout_rate:  可训练Positional Embedding的丢弃率
         """
-        self.input_dim = input_dim
+        self.input_dim = input_shape
         self.out_dim = out_dim
-        self.cnn_model = cnn_model
+        self.cnn_model = CNN_BLOCK[cnn_model]
         self.cnn_filter_root = cnn_filter_root
         self.transformer_layer_num = tfl_num
         self.patch_size = patch_size
         self.d_model = d_model
         self.num_heads = num_heads
         self.dff = dff
+        self.dec_block_num = dec_block_num
+        self.dec_block_filter_root = dec_block_filter_root
         self.dropout_rate = dropout_rate
+        self.activation_type = activation_type
+        self.kernel_initializer = kernel_initializer
+        print('TransUNet实例化完成！')
 
     def get_model(self, log=False):
         # 1.Inputs
@@ -91,37 +107,52 @@ class TransUnet:
         if log:
             print('Transformer outputs is reshaped to {}'.format(out.shape))
 
-        # 6.U-shape Decoder
-        out = tf.keras.layers.Conv2D(self.cnn_filter_root*8, kernel_size=[3, 3], padding='same', activation='relu',
-                                     kernel_initializer='he_normal')(out)
+        # 6. CUP
+        out = tf.keras.layers.Conv2D(self.dec_block_filter_root * 2, kernel_size=[3, 3], padding='same',
+                                     activation=self.activation_type, kernel_initializer=self.kernel_initializer)(out)
         if log:
             print('Shape of inputs of Decoder is {}'.format(out.shape))
 
-        for i in range(2, -1, -1):
+        for i in range(self.dec_block_num):
             out = tf.keras.layers.UpSampling2D(interpolation='bilinear')(out)
             if log:
                 print('Shape of features[{}] is {}'.format(i, features[i].shape))
             out = tf.keras.layers.Concatenate()([features[i], out])  # 此处需要注意features的索引值与i的关系
-            out = tf.keras.layers.Conv2D(self.cnn_filter_root**i, kernel_size=[3, 3], padding='same',
-                                         kernel_initializer='he_normal')(out)
+            out = tf.keras.layers.Conv2D(self.dec_block_filter_root // 2 ** i, kernel_size=[3, 3], padding='same',
+                                         kernel_initializer=self.kernel_initializer)(out)
             out = tf.keras.layers.BatchNormalization()(out)
-            out = tf.keras.layers.Conv2D(self.cnn_filter_root ** i, kernel_size=[3, 3], padding='same',
-                                         kernel_initializer='he_normal')(out)
-            out = tf.keras.layers.BatchNormalization()(out)
+            out = tf.keras.layers.Activation(self.activation_type)(out)
+            # out = tf.keras.layers.Conv2D(self.dec_block_filter_root // 2 ** i, kernel_size=[3, 3], padding='same',
+            #                              kernel_initializer='he_normal')(out)
+            # out = tf.keras.layers.BatchNormalization()(out)
             if log:
                 print('Shape of {}-th floor of decoder is {}'.format(i, out.shape))
+
+        # out = Decoder(self.dec_block_num, self.dec_block_filter_root, features=features)(out)
+
         out = tf.keras.layers.UpSampling2D(interpolation='bilinear')(out)
-        out = tf.keras.layers.Conv2D(self.cnn_filter_root // 2, kernel_size=[3, 3], padding='same',
-                                     kernel_initializer='he_normal')(out)
+        out = tf.keras.layers.Conv2D(self.dec_block_filter_root // 2 ** self.dec_block_num, kernel_size=[3, 3],
+                                     padding='same', kernel_initializer=self.kernel_initializer)(out)
         out = tf.keras.layers.BatchNormalization()(out)
+        out = tf.keras.layers.Activation(self.activation_type)(out)
 
         # 7.Segmentation head
         outputs = tf.keras.layers.Conv2D(self.out_dim, [1, 1], activation='sigmoid')(out)
 
         return tf.keras.Model(inputs=inputs, outputs=outputs)
 
+    def get_info(self):
+        return [
+            ['input_shape', 'out_dim', 'cnn_model', 'cnn_filter_root', 'transformer_layer_num',
+             'patch_size', 'd_model', 'num_heads', 'dff', 'decoder_block_num',
+             'decoder_block_filter_root', 'activation_type', 'kernel_initializer'],  # Title
+            [str(self.input_dim), self.out_dim, self.cnn_model, self.cnn_filter_root, self.transformer_layer_num,
+             self.patch_size, self.d_model, self.num_heads, self.dff, self.dec_block_num,
+             self.dec_block_filter_root, self.activation_type, self.kernel_initializer]  # Content
+        ]
+
 
 if __name__ == '__main__':
-    myModel = TransUnet([512, 512, 3], 5, CNN, 32, 12, 2, 20, 10, 20)
+    myModel = TransUnet(input_shape=[512, 512, 3])
     model = myModel.get_model(log=True)
     model.summary()

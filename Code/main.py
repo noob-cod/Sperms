@@ -4,42 +4,49 @@
 @Brief: 支持单机多卡分布式训练
 """
 import os
+import csv
+import codecs
 import tensorflow as tf
 
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, LearningRateScheduler
+from tensorflow.keras.losses import BinaryCrossentropy
 from UNet.UNet import UNet
 from UNetpp.UNetPP import UNetPP
+from TransUNet.TransUNet import TransUnet
 from utils.datamaker.TFRecorder import TFRecorder
 from utils.losses.DiceLoss import DiceLoss
 from utils.losses.FocalLoss import FocalLoss
 from utils.losses.UNetPPLoss import DeepSupLoss
 from utils.lr_schedule import LRScheduleManager
+from utils.metrics.Dice import AiDice, ArDice, BgDice, NeglectDice, OthersDice
+from utils.metrics.IOU import AiIOU, ArIOU, BgIOU, NeglectIOU, OthersIOU
 
 from config import cfg
 
 strategy = None
-GLOBAL_BATCH_SIZE = None
+GLOBAL_BATCH_SIZE = cfg.TRAIN.BATCH_SIZE
+BATCH_SIZE_PER_REPLICA = None
 if cfg.TRAIN.DISTRIBUTE_FLAG:
     # 创建新的分布式训练策略
     strategy = tf.distribute.MirroredStrategy(devices=cfg.TRAIN.DISTRIBUTE_DEVICES)
 
     # 全局批尺寸 = 单卡批尺寸 * 卡数量
-    GLOBAL_BATCH_SIZE = cfg.TRAIN.BATCH_SIZE * strategy.num_replicas_in_sync
+    assert GLOBAL_BATCH_SIZE % strategy.num_replicas_in_sync == 0, 'batch size与数量不匹配！'
+    BATCH_SIZE_PER_REPLICA = GLOBAL_BATCH_SIZE // strategy.num_replicas_in_sync
 
 PATTERNS = {
     'segmentation': {
         'UNet': UNet,
-        'UNet++': UNetPP
-    },
-    'detection': {
-
+        'UNet++': UNetPP,
+        'TransUNet': TransUnet
     }
 }
 
 # =========================================== #
 # 构建数据集
 # =========================================== #
+print('Making dataset ...')
 # 记录所有训练用的tfrecord文件路径
 tf_record_files = []
 for name in os.listdir(cfg.DATA.TRAINING_TFRECORD):
@@ -62,62 +69,54 @@ else:
     training_set = training_set.batch(batch_size=cfg.TRAIN.BATCH_SIZE)
     if validation_set:
         validation_set = validation_set.batch(batch_size=cfg.TRAIN.BATCH_SIZE)
+print('Done!')
+print()
 
 # =========================================== #
 # 构建神经网络
 # =========================================== #
-if cfg.MODEL.PATTERN == 'segmentation':
-    if PATTERNS[cfg.MODEL.PATTERN] == 'UNet++':
-        my_model = PATTERNS[cfg.MODEL.PATTERN][cfg.MODEL.TYPE](
-            input_shape=cfg.MODEL.UNET_INPUT_SHAPE,
-            filter_root=cfg.MODEL.UNET_FILTER_ROOT,
-            depth=cfg.MODEL.UNET_DEPTH,
-            out_dim=cfg.MODEL.UNET_OUT_DIM,
-            activation_type=cfg.MODEL.UNET_ACTIVATION,
-            kernel_initializer_type=cfg.MODEL.UNET_KERNEL_INITIALIZER,
-            batch_norm=cfg.MODEL.UNET_BATCH_NORMALIZATION,
-            deep_supervision=cfg.MODEL.UNETPP_DEEP_SUPERVISION
-        )
-    else:
-        my_model = PATTERNS[cfg.MODEL.PATTERN][cfg.MODEL.TYPE](
-            input_shape=cfg.MODEL.UNET_INPUT_SHAPE,
-            filter_root=cfg.MODEL.UNET_FILTER_ROOT,
-            depth=cfg.MODEL.UNET_DEPTH,
-            out_dim=cfg.MODEL.UNET_OUT_DIM,
-            activation_type=cfg.MODEL.UNET_ACTIVATION,
-            kernel_initializer_type=cfg.MODEL.UNET_KERNEL_INITIALIZER,
-            batch_norm=cfg.MODEL.UNET_BATCH_NORMALIZATION
-        )
-elif cfg.MODEL.PATTERN == 'detection':
-    my_model = None
-    assert 1 == 0, '不存在的模式!'
-else:
-    my_model = None
-    assert 1 == 0, '不存在的模式!'
+print('Pattern is: ', cfg.MODEL.PATTERN)
+print('Model type is: ', cfg.MODEL.TYPE)
+my_model = PATTERNS[cfg.MODEL.PATTERN][cfg.MODEL.TYPE]()
 
+print('Constructing model ...')
 if cfg.TRAIN.DISTRIBUTE_FLAG:
     with strategy.scope():
         model = my_model.get_model()
 else:
     model = my_model.get_model()
+print('Done!')
+print()
 
 # =========================================== #
 # 编译神经网络
 # =========================================== #
+print('Compiling model ...')
 loss_dict = {
-    'bce': 'binary_crossentropy',
+    'bce': BinaryCrossentropy,
     'dice': DiceLoss,
     'fcl': FocalLoss,
     'bcedice': DeepSupLoss
 }
 
 optimizer_dict = {
-    'adam': tf.keras.optimizers.Adam
+    'adam': tf.keras.optimizers.Adam,
+    'sgd': tf.keras.optimizers.SGD
 }
 
 metric_dict = {
     'precision': tf.keras.metrics.Precision,
-    'miou': tf.keras.metrics.MeanIoU
+    'miou': tf.keras.metrics.MeanIoU,
+    'ai_iou': AiIOU,
+    'ar_iou': ArIOU,
+    'bg_iou': BgIOU,
+    'neglect_iou': NeglectIOU,
+    'others_iou': OthersIOU,
+    'ai_dice': AiDice,
+    'ar_dice': ArDice,
+    'bg_dice': BgDice,
+    'neglect_dice': NeglectDice,
+    'others_dice': OthersDice,
 }
 
 if cfg.TRAIN.DISTRIBUTE_FLAG:
@@ -126,15 +125,21 @@ if cfg.TRAIN.DISTRIBUTE_FLAG:
         loss = loss_dict[cfg.TRAIN.LOSS.lower()]()
 
         # optimizer
-        optimizer = optimizer_dict[cfg.TRAIN.OPTIMIZER.lower()](learning_rate=cfg.TRAIN.LR)
+        optimizer = optimizer_dict[cfg.TRAIN.OPTIMIZER.lower()](cfg.TRAIN.OPTIMIZER_PARAMETERS)
 
         # metrics
+        # metrics = ['accuracy']
+        # for item in cfg.TRAIN.METRICS:
+        #     if item != 'miou':
+        #         metrics.append(metric_dict[item]())
+        #     else:
+        #         metrics.append(metric_dict[item](num_classes=5))
         metrics = ['accuracy']
         for item in cfg.TRAIN.METRICS:
-            if item != 'miou':
-                metrics.append(metric_dict[item]())
+            if item == 'miou':
+                metrics.append(metric_dict[item](num_classes=2))
             else:
-                metrics.append(metric_dict[item](num_classes=5))
+                metrics.append(metric_dict[item]())
 
         # compile
         model.compile(
@@ -152,7 +157,7 @@ else:
         if item != 'miou':
             metrics.append(metric_dict[item]())
         else:
-            metrics.append(metric_dict[item](num_classes=5))
+            metrics.append(metric_dict[item](num_classes=2))
 
     # compile
     model.compile(
@@ -160,6 +165,8 @@ else:
         loss=loss,
         metrics=metrics
     )
+print('Done!')
+print()
 
 # =========================================== #
 # 设置callbacks
@@ -211,6 +218,32 @@ else:
     os.mkdir(path=cfg.CALLBACKS.CHECK_POINT_DIR)
     os.mkdir(path=cfg.CALLBACKS.CHECK_POINT_DIR + '/models')
     os.mkdir(path=cfg.CALLBACKS.CHECK_POINT_DIR + '/logs')
+
+# =========================================== #
+# 保存模型配置
+# =========================================== #
+print('正在保存模型配置...')
+# 训练参数
+training_info = [
+    ['模型', 'Loss', 'Optimizer', 'Learning Rate', 'Epoch', 'Batch_size'],
+    [cfg.MODEL.TYPE, cfg.TRAIN.LOSS, cfg.TRAIN.OPTIMIZER, cfg.TRAIN.LR, cfg.TRAIN.EPOCH, cfg.TRAIN.BATCH_SIZE]
+]
+# 模型参数
+model_info = my_model.get_info()
+
+# 合并训练参数和模型参数
+training_info[0].extend(model_info[0])
+training_info[1].extend(model_info[1])
+
+# 写入配置
+f = codecs.open(os.path.join(cfg.CALLBACKS.CHECK_POINT_DIR,
+                             'ModelConfig.csv'), 'w', 'gbk')  # utf-8需要转gbk
+writer = csv.writer(f)
+for i in training_info:
+    writer.writerow(i)
+f.close()
+print('Done!')
+print()
 
 # =========================================== #
 # 训练

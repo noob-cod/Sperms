@@ -2,12 +2,18 @@
 @Date: 2021/10/18 下午3:34
 @Author: Chen Zhang
 @Brief: https://github.com/4uiiurz1/pytorch-nested-unet/blob/master/archs.py
+
+How to generate final result?
+    As a result, UNet++ generates four segmentation maps given an input image, witch will
+    be further averaged to generate the final segmentation map.
 """
 from typing import Tuple
 
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, BatchNormalization, Activation, MaxPooling2D, UpSampling2D
 from tensorflow.keras.layers import Concatenate
+
+from Code.config import cfg
 
 
 class UNetPPNeuron(Model):
@@ -39,20 +45,20 @@ class UNetPPNeuron(Model):
 class UNetPP:
 
     def __init__(self,
-                 input_shape: Tuple[int, int, int],
-                 filter_root: [int],
-                 depth: [int],
-                 out_dim: [int],
-                 activation_type: [str] = 'relu',
-                 kernel_initializer_type: [str] = 'he_normal',
-                 batch_norm: [bool] = True,
-                 deep_supervision: [bool] = False
+                 input_shape: Tuple[int, int, int] = cfg.MODEL.INPUT_SHAPE,
+                 filter_root: [int] = cfg.MODEL.UNETPP.FILTER_ROOT,
+                 depth: [int] = cfg.MODEL.UNETPP.DEPTH,
+                 out_dim: [int] = cfg.MODEL.UNETPP.OUT_DIM,
+                 activation_type: [str] = cfg.MODEL.UNETPP.ACTIVATION,
+                 kernel_initializer_type: [str] = cfg.MODEL.UNETPP.KERNEL_INITIALIZER,
+                 batch_norm: [bool] = cfg.MODEL.UNETPP.BATCH_NORMALIZATION,
+                 deep_supervision: [bool] = cfg.MODEL.UNETPP.DEEP_SUPERVISION
                  ):
-
-        self.n_filter = [16, 32, 64, 128, 256]
 
         self.input_shape = input_shape
         self.filter_root = filter_root
+        self.n_filter = [self.filter_root, 2*self.filter_root, 4*self.filter_root,
+                         8*self.filter_root, 16*self.filter_root]
         self.depth = depth
         self.out_dim = out_dim
         self.activation_type = activation_type
@@ -84,12 +90,12 @@ class UNetPP:
         self.conv0_4 = UNetPPNeuron(self.n_filter[0])
 
         if self.deep_supervision:
-            self.final1 = Conv2D(self.out_dim, [1, 1], activation='sigmoid')
-            self.final2 = Conv2D(self.out_dim, [1, 1], activation='sigmoid')
-            self.final3 = Conv2D(self.out_dim, [1, 1], activation='sigmoid')
-            self.final4 = Conv2D(self.out_dim, [1, 1], activation='sigmoid')
+            self.final1 = Conv2D(self.out_dim, [1, 1], activation='sigmoid', name='out1')
+            self.final2 = Conv2D(self.out_dim, [1, 1], activation='sigmoid', name='out2')
+            self.final3 = Conv2D(self.out_dim, [1, 1], activation='sigmoid', name='out3')
+            self.final4 = Conv2D(self.out_dim, [1, 1], activation='sigmoid', name='out4')
         else:
-            self.final = Conv2D(self.out_dim, [1, 1], activation='sigmoid')
+            self.final = Conv2D(self.out_dim, [1, 1], activation='sigmoid', name='out4')
 
     def get_model(self):
         inputs = Input(shape=self.input_shape)
@@ -122,6 +128,14 @@ class UNetPP:
         else:
             output = self.final(x0_4)
             return Model(inputs=inputs, outputs=output)
+
+    def get_info(self):
+        return [
+            ['input_shape', 'filter_root', 'depth', 'out_dim', 'activation_type',
+             'kernel_initializer_type', 'batch_norm', 'deep_supervision'],  # Title
+            [str(self.input_shape), self.filter_root, self.depth, self.out_dim, self.activation_type,
+             self.kern_ini_type, str(self.batch_norm), str(self.deep_supervision)]  # Content
+        ]
 
 
 if __name__ == '__main__':

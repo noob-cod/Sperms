@@ -1,7 +1,7 @@
 """
 @Date: 2021/10/22 下午2:20
 @Author: Chen Zhang
-@Brief: Transformer Layer
+@Brief: Transformer Layer (部分代码来自Google官方）
 """
 import keras.layers
 import tensorflow as tf

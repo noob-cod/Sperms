@@ -9,18 +9,20 @@ from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, BatchNormalization, Activation, MaxPooling2D, Dropout, UpSampling2D
 from tensorflow.keras.layers import Cropping2D, Concatenate
 
+from Code.config import cfg
+
 
 class UNet:
 
     def __init__(self,
-                 input_shape: Tuple[int, int, int],
-                 filter_root: int,  # Floor 1卷积核数量
-                 depth: int,  # UNet深度（Floor数量）
-                 out_dim: int,  # UNet最终输出的通道数
-                 activation_type: str = 'relu',  # 默认激活函数
-                 kernel_initializer_type: str = 'he_normal',  # 核初始化方式，默认为he_normal
-                 dropout: int = 0,  # Dropout值，默认不带有Dropout
-                 batch_norm: bool = True  # 是否包含批正则化层
+                 input_shape: Tuple[int, int, int] = cfg.MODEL.INPUT_SHAPE,
+                 filter_root: int = cfg.MODEL.UNET.FILTER_ROOT,  # Floor 1卷积核数量
+                 depth: int = cfg.MODEL.UNET.DEPTH,  # UNet深度（Floor数量）
+                 out_dim: int = cfg.MODEL.UNET.OUT_DIM,  # UNet最终输出的通道数
+                 activation_type: str = cfg.MODEL.UNET.ACTIVATION,  # 默认激活函数
+                 kernel_initializer_type: str = cfg.MODEL.UNET.KERNEL_INITIALIZER,  # 核初始化方式，默认为he_normal
+                 dropout: int = cfg.MODEL.UNET.DROPOUT,  # Dropout值，默认不带有Dropout
+                 batch_norm: bool = cfg.MODEL.UNET.BATCH_NORMALIZATION  # 是否包含批正则化层
                  ):
         """
         :param filter_root: 第一次池化操作前的卷积核数量
@@ -142,9 +144,17 @@ class UNet:
 
         return Model(inputs=inputs, outputs=outputs)
 
+    def get_info(self):
+        return [
+            ['input_shape', 'filter_root', 'depth', 'out_dim', 'activation_type',
+             'kernel_initializer_type', 'batch_norm', 'dropout'],  # Title
+            [str(self.input_shape), self.filter_root, self.depth, self.out_dim, self.activation_type,
+             self.kern_ini_type, str(self.batch_norm), self.dropout]  # Content
+        ]
+
 
 if __name__ == '__main__':
-    my_model = UNet((256, 256, 3), 16, 5, 5)
+    my_model = UNet()
     unet = my_model.get_model()
     unet.build((256, 256, 3))
     unet.summary()

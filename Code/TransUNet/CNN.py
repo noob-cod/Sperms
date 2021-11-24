@@ -48,7 +48,7 @@ class CNN(Model):
         out = self.pool3(out)
         feature3 = out
 
-        return out, [feature1, feature2, feature3]
+        return out, [feature3, feature2, feature1]
 
 
 if __name__ == '__main__':

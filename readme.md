@@ -8,10 +8,16 @@
 
 ## 目录架构
 - Checkpoint
-    - UNet: UNet模型训练过程中的checkpoint文件
+    - TransUNet: TransUNet模型训练过程中的checkpoint相关文件
+    - UNet: UNet模型训练过程中的checkpoint相关文件
+    - UNet++: UNet++模型训练过程中的checkpoint相关文件
   
 - Code  
     - utils  
+    	- metrics  
+    	    - _Dice.py: 废弃
+    	    - Dice.py: 基于tensorflow.python.keras.metrics.MeanMetricWrapper实现的Dice
+    	    - IOU.py: 基于tensorflow.keras.metrics.Metric实现的IOU
     	- losses  
     	    - FocalLoss.py: FocalLoss的实现  
     	    - DiceLoss.py: DiceLoss的实现  
@@ -26,8 +32,14 @@
     - UNet  
     	- UNet.py: UNet源代码  
     - UNetpp  
-    	- UNetpp.py: UNet++源代码，基于循环的思路生成嵌套结构（有bug）  
-    	- UNetPP.py: UNet++源代码（借鉴自他人）  
+    	- UNetpp.py: UNet++代码，基于循环的思路生成嵌套结构（废弃）  
+    	- UNetPP.py: UNet++代码  
+    - TransUNet  
+        - CNN.py: CNN特征提取器代码  
+        - Decoder.py: 四层解码器代码  
+        - PatchEmbeddingLayer.py: Patch Embedding层代码  
+        - TransformerLayer.py:  Transformer层代码（来自Tensorflow官方文档）  
+        - TransUNet.py: TransUNet代码  
     - config.py: 模型配置文件（需要重新调整内容的结构，在调参时很难找到参数位置）  
     - main.py: 模型组装、配置、训练  
     - predict.py: 预测并保存预测结果  
@@ -56,3 +68,5 @@
     	    - src:
     	        - img: 测试集原始图像  
     	        - mask: 测试集原始mask  
+
+- Test  
